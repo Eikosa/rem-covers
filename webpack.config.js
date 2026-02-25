@@ -78,6 +78,11 @@ const config = {
       s.type = "module";
       s.src = widgetName+"${SANDBOX_SUFFIX}.js";
       document.body.appendChild(s);
+
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = widgetName+"${SANDBOX_SUFFIX}.css";
+      document.head.appendChild(link);
       </script>
     `,
       filename: 'index.html',
