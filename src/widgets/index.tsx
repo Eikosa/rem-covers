@@ -1,5 +1,5 @@
 import { declareIndexPlugin, type ReactRNPlugin, WidgetLocation } from '@remnote/plugin-sdk';
-import { BACKGROUND_PLUGIN_DATA_KEY } from '../utils/storage';
+import { BACKGROUND_PLUGIN_DATA_KEY, setDocumentBackground } from '../utils/storage';
 import { JAMES_WEBB } from '../components/BackgroundPicker';
 import '../style.css';
 import '../index.css';
@@ -29,12 +29,13 @@ async function onActivate(plugin: ReactRNPlugin) {
 
       if (documentId) {
         const defaultBg = {
-          type: 'image',
+          type: 'image' as const,
           value: JAMES_WEBB[Math.floor(Math.random() * JAMES_WEBB.length)],
           yPosition: 50
         };
 
-        await plugin.storage.setSynced(`${BACKGROUND_PLUGIN_DATA_KEY}_${documentId}`, defaultBg);
+        // This unified helper sets the storage key and triggers tracker refetches natively
+        await setDocumentBackground(plugin, documentId, defaultBg);
       } else {
         plugin.app.toast('Please focus on a Document first to add a cover.');
       }
