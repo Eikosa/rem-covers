@@ -20,21 +20,23 @@ async function onActivate(plugin: ReactRNPlugin) {
   await plugin.app.registerCommand({
     id: 'add-document-cover',
     name: 'Add Cover',
-    description: 'Adds a random cover image to the current specifically focused Rem.',
+    description: 'Adds a random cover image to the current specifically focused Document.',
     action: async () => {
-      const rem = await plugin.focus.getFocusedRem();
+      // Get the currently open page/pane ID rather than the deeply nested text focus ID
+      const openPaneIds = await plugin.window.getOpenPaneRemIds();
 
-      // We want to apply the cover strictly to the specific rem the user typed the slash command on
-      if (rem) {
+      const documentId = openPaneIds[0];
+
+      if (documentId) {
         const defaultBg = {
           type: 'image',
           value: JAMES_WEBB[Math.floor(Math.random() * JAMES_WEBB.length)],
           yPosition: 50
         };
-        // Set the storage key explicitly mapped to this precise rem's ID
-        await plugin.storage.setSynced(`${BACKGROUND_PLUGIN_DATA_KEY}_${rem._id}`, defaultBg);
+
+        await plugin.storage.setSynced(`${BACKGROUND_PLUGIN_DATA_KEY}_${documentId}`, defaultBg);
       } else {
-        plugin.app.toast('Please focus on a specific Rem first to add a cover.');
+        plugin.app.toast('Please focus on a Document first to add a cover.');
       }
     },
   });
