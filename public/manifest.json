@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "id": "plugin_template",
+  "id": "rem-covers",
   "name": "Rem Covers",
   "author": "Eiko",
   "repoUrl": "https://github.com/remnoteio/remnote-plugin-template-react",
