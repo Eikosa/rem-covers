@@ -1,4 +1,4 @@
-import { usePlugin, renderWidget, useTracker, WidgetLocation } from '@remnote/plugin-sdk';
+import { usePlugin, renderWidget, useTrackerPlugin, WidgetLocation } from '@remnote/plugin-sdk';
 import React, { useEffect, useState, useRef } from 'react';
 import { BackgroundPicker } from '../components/BackgroundPicker';
 import { DefaultBackgroundState, getDocumentBackground, setDocumentBackground } from '../utils/storage';
@@ -34,13 +34,15 @@ export const DocumentBackground = () => {
         };
     }, [plugin, documentId]);
 
-    const backgroundDataState = useTracker(async (reactivePlugin) => {
+    const backgroundDataState = useTrackerPlugin(async (reactivePlugin) => {
+        // Always call a reactive method to avoid "No reactive method called" warning.
+        // When documentId is null, getSynced with a placeholder key returns undefined harmlessly.
+        const data = await getDocumentBackground(reactivePlugin, documentId || '__no_document__');
         if (!documentId) return { loaded: false, data: null };
-        const data = await getDocumentBackground(reactivePlugin, documentId);
         return { loaded: true, data };
     }, [documentId]);
 
-    const showAddCoverButton = useTracker(async (reactivePlugin) => {
+    const showAddCoverButton = useTrackerPlugin(async (reactivePlugin) => {
         return await reactivePlugin.settings.getSetting('show-add-cover-button') !== false; // Default true
     }, []);
 
