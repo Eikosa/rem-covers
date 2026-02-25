@@ -1,45 +1,45 @@
 import { declareIndexPlugin, type ReactRNPlugin, WidgetLocation } from '@remnote/plugin-sdk';
+import { BACKGROUND_PLUGIN_DATA_KEY } from '../utils/storage';
+import { JAMES_WEBB } from '../components/BackgroundPicker';
 import '../style.css';
-import '../index.css'; // import <widget-name>.css
+import '../index.css';
 
 async function onActivate(plugin: ReactRNPlugin) {
-  // Register settings
-  await plugin.settings.registerStringSetting({
-    id: 'name',
-    title: 'What is your Name?',
-    defaultValue: 'Bob',
+  // Register the document background widget to appear above the toolbar/title
+  await plugin.app.registerWidget('document_background', WidgetLocation.DocumentAboveToolbar, {
+    dimensions: { height: 'auto', width: '100%' },
   });
 
   await plugin.settings.registerBooleanSetting({
-    id: 'pizza',
-    title: 'Do you like pizza?',
+    id: 'show-add-cover-button',
+    title: 'Show "Add Cover" Button',
     defaultValue: true,
+    description: 'If disabled, the "Add Cover" button is hidden. You can use the /cover command instead to add a cover.'
   });
 
-  await plugin.settings.registerNumberSetting({
-    id: 'favorite-number',
-    title: 'What is your favorite number?',
-    defaultValue: 42,
-  });
-
-  // A command that inserts text into the editor if focused.
   await plugin.app.registerCommand({
-    id: 'editor-command',
-    name: 'Editor Command',
+    id: 'add-document-cover',
+    name: 'Add Cover',
+    description: 'Adds a random cover image to the current specifically focused Rem.',
     action: async () => {
-      plugin.editor.insertPlainText('Hello World!');
+      const rem = await plugin.focus.getFocusedRem();
+
+      // We want to apply the cover strictly to the specific rem the user typed the slash command on
+      if (rem) {
+        const defaultBg = {
+          type: 'image',
+          value: JAMES_WEBB[Math.floor(Math.random() * JAMES_WEBB.length)],
+          yPosition: 50
+        };
+        // Set the storage key explicitly mapped to this precise rem's ID
+        await plugin.storage.setSynced(`${BACKGROUND_PLUGIN_DATA_KEY}_${rem._id}`, defaultBg);
+      } else {
+        plugin.app.toast('Please focus on a specific Rem first to add a cover.');
+      }
     },
-  });
-
-  // Show a toast notification to the user.
-  await plugin.app.toast("I'm a toast!");
-
-  // Register a sidebar widget.
-  await plugin.app.registerWidget('sample_widget', WidgetLocation.RightSidebar, {
-    dimensions: { height: 'auto', width: '100%' },
   });
 }
 
-async function onDeactivate(_: ReactRNPlugin) {}
+async function onDeactivate(_: ReactRNPlugin) { }
 
 declareIndexPlugin(onActivate, onDeactivate);

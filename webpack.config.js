@@ -13,7 +13,7 @@ const CopyPlugin = require('copy-webpack-plugin');
 const isProd = process.env.NODE_ENV === 'production';
 const isDevelopment = !isProd;
 
-const fastRefresh = isDevelopment ? new ReactRefreshWebpackPlugin() : null;
+const fastRefresh = isDevelopment ? new ReactRefreshWebpackPlugin({ overlay: false }) : null;
 
 const SANDBOX_SUFFIX = '-sandbox';
 
@@ -63,8 +63,8 @@ const config = {
     isDevelopment
       ? undefined
       : new MiniCssExtractPlugin({
-          filename: '[name].css',
-        }),
+        filename: '[name].css',
+      }),
     new HtmlWebpackPlugin({
       templateContent: `
       <body></body>

@@ -1,9 +1,9 @@
 {
   "manifestVersion": 1,
   "id": "plugin_template",
-  "name": "Plugin Template",
-  "author": "remnote",
-  "repoUrl": "",
+  "name": "Rem Covers",
+  "author": "Eiko",
+  "repoUrl": "https://github.com/remnoteio/remnote-plugin-template-react",
   "version": {
     "major": 0,
     "minor": 0,
@@ -11,12 +11,12 @@
   },
   "theme": [],
   "enableOnMobile": false,
-  "description": "",
+  "description": "Beautiful aesthetic cover images for your Rems",
   "requestNative": false,
   "requiredScopes": [
     {
       "type": "All",
-      "level": "Read"
+      "level": "ReadCreateModifyDelete"
     }
   ]
 }

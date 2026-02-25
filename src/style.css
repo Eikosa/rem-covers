@@ -1,45 +1,321 @@
-/*
- * This file contains the tailwind directives and equivalent styles
- * to replicate the behavior inside the Shadow DOM of native plugins.
- */
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/*
-1. Use a consistent sensible line-height in all browsers.
-2. Prevent adjustments of font size after orientation changes in iOS.
-3. Use a more readable tab size.
-*/
-
-html,
-:host-context(div) {
-  line-height: 1.5; /* 1 */
-  -webkit-text-size-adjust: 100%; /* 2 */
-  -moz-tab-size: 4; /* 3 */
-  tab-size: 4; /* 3 */
+/* Main Container */
+.rn-background-container {
+  position: relative;
+  width: 100%;
+  transition: height 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
-/*
-1. Remove the margin in all browsers.
-2. Inherit line-height from `html` so users can set them as a class directly on the `html` element.
-*/
-
-body,
-:host {
-  margin: 0; /* 1 */
-  line-height: inherit; /* 2 */
+.rn-background-container.has-background {
+  height: 240px;
+  /* 30vh like Notion or fixed */
+  width: 100%;
 }
 
-/**
-*/
+.rn-background-container.no-background {
+  height: auto;
+  justify-content: flex-start;
+  padding: 0;
+}
 
-body,
-:host {
+.rn-background-container.repositioning {
+  cursor: ns-resize;
+}
+
+/* The actual image or color layer */
+.rn-background-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  /* Let drag events pass through to container */
+}
+
+/* Actions overlay (buttons) */
+.rn-background-actions {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.rn-background-container:hover .rn-background-actions,
+.rn-background-container.no-background .rn-background-actions {
+  opacity: 1;
+}
+
+/* Buttons */
+.rn-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: transparent;
+  color: var(--rn-clr-content-secondary, #737373);
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-family: inherit;
+}
+
+.rn-btn.hover-btn {
+  background-color: var(--rn-clr-background-primary, #ffffff);
+  border: 1px solid var(--rn-clr-border-opaque, #e5e5e5);
+  color: var(--rn-clr-content-primary, #404040);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.rn-btn.hover-btn:hover {
+  background-color: var(--rn-clr-background-secondary, #f5f5f5);
+}
+
+.rn-btn.primary {
+  background-color: var(--rn-clr-background-brand-primary, #2daadc);
+  color: white;
+}
+
+.rn-background-button-group {
+  display: flex;
+  gap: 8px;
+}
+
+/* When transparent Add Cover */
+.rn-background-add-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.rn-background-add-inner {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  align-items: center;
+  padding-left: 16px;
+}
+
+/* Subtle add cover button when no background */
+.rn-btn.add-cover-btn.no-bg {
+  position: relative;
+  top: 0;
+  left: 0;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  height: 24px;
+  line-height: 24px;
+  color: var(--rn-clr-content-tertiary, #a3a3a3);
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s;
+  box-shadow: none;
+}
+
+.rn-background-container:hover .rn-btn.add-cover-btn.no-bg {
+  opacity: 1;
+}
+
+.rn-btn.add-cover-btn:hover {
+  background-color: var(--rn-clr-background-secondary, #f5f5f5);
+  color: var(--rn-clr-content-primary, #404040);
+}
+
+/* Reposition Bar */
+.rn-background-reposition-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+/* Picker Popup */
+.rn-background-picker-container {
+  margin-top: 8px;
+  margin-bottom: 24px;
+  align-self: flex-end;
+  margin-right: 12px;
+  background-color: var(--rn-clr-background-primary, #ffffff);
+  border: 1px solid var(--rn-clr-border-opaque, #e5e5e5);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 380px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+html.dark .rn-background-picker-container {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.rn-background-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rn-clr-border-opaque, #e5e5e5);
+}
+
+.rn-background-picker-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.rn-background-picker-tabs button {
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--rn-clr-content-secondary, #737373);
+  cursor: pointer;
+}
+
+.rn-background-picker-tabs button.active,
+.rn-background-picker-tabs button:hover {
+  background-color: var(--rn-clr-background-secondary, #f5f5f5);
+  color: var(--rn-clr-content-primary, #404040);
+}
+
+.rn-background-picker-remove {
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  color: var(--rn-clr-content-secondary, #737373);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.rn-background-picker-remove:hover {
+  background-color: var(--rn-clr-background-secondary, #f5f5f5);
+}
+
+.rn-background-picker-scrollable {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.rn-background-picker-section:not(:last-child) {
+  margin-bottom: 16px;
+}
+
+.rn-background-picker-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rn-clr-content-secondary, #737373);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rn-background-picker-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.rn-background-picker-grid.colors {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.rn-background-picker-grid.images {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.rn-background-picker-item {
+  height: 48px;
+  border-radius: 4px;
+  cursor: pointer;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+html.dark .rn-background-picker-item {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rn-background-picker-item:hover {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
+/* Upload & Link tabs */
+.rn-background-picker-upload,
+.rn-background-picker-link {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rn-background-picker-upload-box {
+  border: 1px dashed var(--rn-clr-border-opaque, #e5e5e5);
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--rn-clr-content-secondary, #737373);
+  position: relative;
+  cursor: pointer;
+}
+
+.rn-background-picker-upload-box:hover {
+  background-color: var(--rn-clr-background-secondary, #f5f5f5);
+}
+
+.rn-background-picker-upload-box input[type="file"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.rn-background-picker-link form {
+  display: flex;
+  gap: 8px;
+}
+
+.rn-background-picker-link input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--rn-clr-border-opaque, #e5e5e5);
+  border-radius: 4px;
+  background-color: var(--rn-clr-background-primary, #ffffff);
+  color: var(--rn-clr-content-primary, #404040);
+  outline: none;
+}
+
+.rn-background-picker-link input:focus {
+  border-color: var(--rn-clr-background-brand-primary, #2daadc);
+}
+
+.rn-background-picker-upload p,
+.rn-background-picker-link p {
+  font-size: 12px;
+  color: var(--rn-clr-content-tertiary, #a3a3a3);
+  margin: 0;
 }

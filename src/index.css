@@ -1,1 +1,14 @@
 /* Add your plugin styles here. This file is named <widget-name>.css; in this case, index.css*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+#root {
+    min-height: max-content;
+    pointer-events: none;
+}
+
+#root>* {
+    pointer-events: auto;
+}
