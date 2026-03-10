@@ -46,6 +46,10 @@ export const DocumentBackground = () => {
         return await reactivePlugin.settings.getSetting('show-add-cover-button') !== false; // Default true
     }, []);
 
+    const coverHeight = useTrackerPlugin(async (reactivePlugin) => {
+        return (await reactivePlugin.settings.getSetting<number>('cover-height')) || 280;
+    }, []);
+
     const [showPicker, setShowPicker] = useState(false);
     const [isRepositioning, setIsRepositioning] = useState(false);
     const [yPosition, setYPosition] = useState(50);
@@ -118,6 +122,7 @@ export const DocumentBackground = () => {
                 onPointerDown={hasBackground ? handlePointerDown : undefined}
                 onPointerMove={hasBackground ? handlePointerMove : undefined}
                 onPointerUp={hasBackground ? handlePointerUp : undefined}
+                style={hasBackground ? { height: `${coverHeight}px` } : undefined}
             >
                 {hasBackground && (
                     backgroundData.type === 'image' ? (

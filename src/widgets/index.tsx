@@ -17,6 +17,13 @@ async function onActivate(plugin: ReactRNPlugin) {
     description: 'If disabled, the "Add Cover" button is hidden. You can use the /cover command instead to add a cover.'
   });
 
+  await plugin.settings.registerNumberSetting({
+    id: 'cover-height',
+    title: 'Cover Height (px)',
+    defaultValue: 280,
+    description: 'The height of the cover image in pixels.'
+  });
+
   await plugin.app.registerCommand({
     id: 'add-document-cover',
     name: 'Add Cover',
