@@ -46,7 +46,7 @@ export const DocumentBackground = () => {
         return await reactivePlugin.settings.getSetting('show-add-cover-button') !== false; // Default true
     }, []);
 
-    const coverHeight = useTrackerPlugin(async (reactivePlugin) => {
+    const globalCoverHeight = useTrackerPlugin(async (reactivePlugin) => {
         return (await reactivePlugin.settings.getSetting<number>('cover-height')) || 280;
     }, []);
 
@@ -54,7 +54,6 @@ export const DocumentBackground = () => {
     const [isRepositioning, setIsRepositioning] = useState(false);
     const [yPosition, setYPosition] = useState(50);
     const [startY, setStartY] = useState(0);
-
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -63,20 +62,49 @@ export const DocumentBackground = () => {
         }
     }, [backgroundDataState]);
 
-    const handleSelectBackground = async (data: DefaultBackgroundState | null) => {
+    const saveBackground = async (newData: DefaultBackgroundState | null) => {
         if (!documentId) return;
-        await setDocumentBackground(plugin, documentId, data);
+        console.log('[RemCover] Saving background state for Rem:', documentId, newData);
+        await setDocumentBackground(plugin, documentId, newData);
+    };
+
+    const handleSelectBackground = async (data: DefaultBackgroundState | null) => {
+        await saveBackground(data);
         setShowPicker(false);
+    };
+
+    const handleUpdateSettings = async (updates: Partial<DefaultBackgroundState>) => {
+        if (!backgroundDataState?.data) return;
+        const updated = { ...backgroundDataState.data };
+        Object.keys(updates).forEach((key) => {
+            const val = (updates as any)[key];
+            if (val === undefined) {
+                delete (updated as any)[key];
+            } else {
+                (updated as any)[key] = val;
+            }
+        });
+        await saveBackground(updated);
+    };
+
+    const handleResetSettings = async () => {
+        if (!backgroundDataState?.data) return;
+        const resetData: DefaultBackgroundState = {
+            type: backgroundDataState.data.type,
+            value: backgroundDataState.data.value,
+            yPosition: backgroundDataState.data.yPosition
+        };
+        await saveBackground(resetData);
     };
 
     const handleAddCover = async () => {
         if (!documentId) return;
-        const defaultBg = {
+        const defaultBg: DefaultBackgroundState = {
             type: 'image' as const,
             value: JAMES_WEBB[Math.floor(Math.random() * JAMES_WEBB.length)],
             yPosition: 50
         };
-        await setDocumentBackground(plugin, documentId, defaultBg);
+        await saveBackground(defaultBg);
     };
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -110,41 +138,83 @@ export const DocumentBackground = () => {
     const backgroundData = backgroundDataState.data;
     const hasBackground = !!backgroundData;
 
-    if (!hasBackground && !showAddCoverButton) {
-        return null; // Render absolutely nothing to take 0px space
-    }
+    if (!hasBackground && !showAddCoverButton) return null;
+
+    const effectiveHeight = backgroundData?.height || globalCoverHeight || 280;
+
+    // Build CSS filter string from all filter properties
+    const buildFilters = (d: DefaultBackgroundState) => {
+        const parts: string[] = [];
+        if (d.blur) parts.push(`blur(${d.blur}px)`);
+        if (d.brightness !== undefined && d.brightness !== 1) parts.push(`brightness(${d.brightness})`);
+        if (d.grayscale) parts.push(`grayscale(${d.grayscale})`);
+        if (d.saturate !== undefined && d.saturate !== 1) parts.push(`saturate(${d.saturate})`);
+        if (d.contrast !== undefined && d.contrast !== 1) parts.push(`contrast(${d.contrast})`);
+        if (d.sepia) parts.push(`sepia(${d.sepia})`);
+        if (d.hueRotate) parts.push(`hue-rotate(${d.hueRotate}deg)`);
+        if (d.invert) parts.push(`invert(${d.invert})`);
+        return parts.join(' ') || 'none';
+    };
+
+    const filters = backgroundData ? buildFilters(backgroundData) : 'none';
+    const effectiveOpacity = backgroundData?.opacity ?? 1;
+    const useRepeat = backgroundData?.repeat && backgroundData.type === 'image';
 
     return (
-        <div className="rn-widget-root" style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="rn-widget-root" style={{ width: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
             <div
                 className={`rn-background-container ${hasBackground ? 'has-background' : 'no-background'} ${isRepositioning ? 'repositioning' : ''}`}
                 ref={containerRef}
                 onPointerDown={hasBackground ? handlePointerDown : undefined}
                 onPointerMove={hasBackground ? handlePointerMove : undefined}
                 onPointerUp={hasBackground ? handlePointerUp : undefined}
-                style={hasBackground ? { height: `${coverHeight}px` } : undefined}
+                style={hasBackground ? { height: `${effectiveHeight}px` } : undefined}
             >
                 {hasBackground && (
                     backgroundData.type === 'image' ? (
-                        <img
-                            className="rn-background-layer"
-                            src={backgroundData.value}
-                            style={{
-                                objectFit: 'cover',
-                                objectPosition: `center ${yPosition}%`
-                            }}
-                            draggable="false"
-                            alt="Background Cover"
-                        />
+                        useRepeat ? (
+                            <div
+                                className="rn-background-layer"
+                                style={{
+                                    backgroundImage: `url(${backgroundData.value})`,
+                                    backgroundSize:
+                                        backgroundData.size === 'fill' ? '100% 100%' :
+                                            (backgroundData.size === 'cover' || backgroundData.size === 'scale-down' || !backgroundData.size) ? 'auto' :
+                                                backgroundData.size,
+                                    backgroundPosition: `${backgroundData.xPosition ?? 50}% ${yPosition}%`,
+                                    backgroundRepeat: 'repeat',
+                                    filter: filters,
+                                    opacity: effectiveOpacity,
+                                    transform: backgroundData.scale ? `scale(${backgroundData.scale})` : undefined
+                                }}
+                            />
+                        ) : (
+                            <img
+                                className="rn-background-layer"
+                                src={backgroundData.value}
+                                style={{
+                                    objectFit: backgroundData.size === 'auto' ? 'none' : (backgroundData.size || 'cover') as any,
+                                    objectPosition: `${backgroundData.xPosition ?? 50}% ${yPosition}%`,
+                                    filter: filters,
+                                    opacity: effectiveOpacity,
+                                    transform: backgroundData.scale ? `scale(${backgroundData.scale})` : undefined
+                                }}
+                                draggable="false"
+                                alt="Background Cover"
+                            />
+                        )
                     ) : (
                         <div
                             className="rn-background-layer"
-                            style={{ background: backgroundData.value }}
+                            style={{
+                                background: backgroundData.value,
+                                filter: filters,
+                                opacity: effectiveOpacity
+                            }}
                         />
                     )
                 )}
 
-                {/* Hover actions */}
                 {hasBackground ? (
                     <div className="rn-background-actions">
                         {isRepositioning ? (
@@ -155,7 +225,7 @@ export const DocumentBackground = () => {
                                     onClick={async () => {
                                         setIsRepositioning(false);
                                         if (backgroundData) {
-                                            await setDocumentBackground(plugin, documentId, { ...backgroundData, yPosition });
+                                            await saveBackground({ ...backgroundData, yPosition });
                                         }
                                     }}
                                 >
@@ -193,6 +263,10 @@ export const DocumentBackground = () => {
                 <BackgroundPicker
                     onSelect={handleSelectBackground}
                     onClose={() => setShowPicker(false)}
+                    currentData={backgroundData}
+                    globalHeight={globalCoverHeight || 280}
+                    onUpdateSettings={handleUpdateSettings}
+                    onResetSettings={handleResetSettings}
                 />
             )}
         </div>

@@ -1,10 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DefaultBackgroundState } from '../utils/storage';
-import { Upload, Link, X, Image as ImageIcon } from 'lucide-react';
+import { DefaultBackgroundState, SizeMode } from '../utils/storage';
+import {
+    Upload, Link as LinkIcon, Image as ImageIcon,
+    Sliders, RotateCcw, Info,
+    Maximize, Minimize, Move, ArrowDownToLine, Repeat,
+    Layout, Palette, Sun, Contrast, Droplets, Sparkles, Moon,
+    MoveHorizontal, MoveVertical, Expand, Scissors, Eye
+} from 'lucide-react';
 
 interface BackgroundPickerProps {
     onSelect: (state: DefaultBackgroundState | null) => void;
     onClose: () => void;
+    currentData: DefaultBackgroundState | null;
+    globalHeight: number;
+    onUpdateSettings: (updates: Partial<DefaultBackgroundState>) => void;
+    onResetSettings: () => void;
 }
 
 const NOTION_BG_BASE = "https://www.notion.so/images/page-cover/";
@@ -130,9 +140,99 @@ const MET_MUSEUM = [
     NOTION_BG_BASE + 'met_klimt_1912.jpg'
 ];
 
-export const BackgroundPicker: React.FC<BackgroundPickerProps> = ({ onSelect, onClose }) => {
-    const [tab, setTab] = useState<'gallery' | 'upload' | 'link'>('gallery');
+// Size modes with icons and labels
+const SIZE_MODES: { value: SizeMode; label: string; icon: React.ReactNode }[] = [
+    { value: 'cover', label: 'Cover', icon: <Maximize size={12} /> },
+    { value: 'contain', label: 'Contain', icon: <Minimize size={12} /> },
+    { value: 'fill', label: 'Fill', icon: <Move size={12} /> },
+    { value: 'auto', label: 'Auto', icon: <ImageIcon size={12} /> },
+    { value: 'scale-down', label: 'Scale ↓', icon: <ArrowDownToLine size={12} /> },
+];
+
+// Debounced slider component: shows live preview, only saves on mouseUp
+interface DebouncedSliderProps {
+    label: string;
+    icon?: React.ReactNode;
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+    unit?: string;
+    tooltip?: string;
+    defaultValue?: number;
+    onCommit: (val: number | undefined) => void;
+    formatValue?: (val: number) => string;
+}
+
+const DebouncedSlider: React.FC<DebouncedSliderProps> = ({
+    label, icon, value, min, max, step, unit = '', tooltip, defaultValue, onCommit, formatValue
+}) => {
+    const [localValue, setLocalValue] = useState(value);
+
+    // Sync local state if external value changes (e.g. from global reset)
+    useEffect(() => {
+        setLocalValue(value);
+    }, [value]);
+
+    const isDirty = defaultValue !== undefined && Math.abs(localValue - defaultValue) > 0.001;
+
+    const handleCommit = () => {
+        if (defaultValue !== undefined && Math.abs(localValue - defaultValue) < 0.001) {
+            onCommit(undefined);
+        } else {
+            onCommit(localValue);
+        }
+    };
+
+    return (
+        <div className="rn-settings-section" title={tooltip}>
+            <div className="rn-settings-label-wrapper">
+                <div className="rn-settings-label">
+                    {icon && <span style={{ opacity: 0.8 }}>{icon}</span>}
+                    {label}
+                </div>
+                <div className="rn-settings-actions">
+                    <div className="rn-settings-value">
+                        {formatValue ? formatValue(localValue) : `${localValue}${unit}`}
+                    </div>
+                    {isDirty && (
+                        <button
+                            className="rn-btn-reset-small"
+                            onClick={() => onCommit(undefined)}
+                            title="Reset to default"
+                        >
+                            <RotateCcw size={10} />
+                        </button>
+                    )}
+                </div>
+            </div>
+            <input
+                type="range"
+                className="rn-range"
+                min={min}
+                max={max}
+                step={step}
+                value={localValue}
+                onChange={(e) => setLocalValue(parseFloat(e.target.value))}
+                onMouseUp={handleCommit}
+                onTouchEnd={handleCommit}
+                style={{ '--rn-range-pct': `${((localValue - min) / (max - min)) * 100}%` } as any}
+            />
+        </div>
+    );
+};
+
+export const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
+    onSelect,
+    onClose,
+    currentData,
+    globalHeight,
+    onUpdateSettings,
+    onResetSettings
+}) => {
+    const [tab, setTab] = useState<'gallery' | 'upload' | 'link' | 'settings'>('gallery');
     const [linkUrl, setLinkUrl] = useState('');
+    const [debugFeedback, setDebugFeedback] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -195,21 +295,41 @@ export const BackgroundPicker: React.FC<BackgroundPickerProps> = ({ onSelect, on
         }
     };
 
+    const handleLogDebug = () => {
+        console.group('[RemCover] Debug Information');
+        console.log('Document ID:', currentData ? 'Loaded' : 'None');
+        console.log('Current State:', currentData);
+        console.log('Global Height:', globalHeight);
+        console.groupEnd();
+
+        setDebugFeedback(true);
+        setTimeout(() => setDebugFeedback(false), 2000);
+    };
+
     return (
         <div className="rn-background-picker-container" ref={containerRef} onClick={(e) => e.stopPropagation()}>
             <div className="rn-background-picker-header">
                 <div className="rn-background-picker-tabs">
-                    <button className={tab === 'gallery' ? 'active' : ''} onClick={() => setTab('gallery')}>
+                    <button className={`rn-picker-tab ${tab === 'gallery' ? 'active' : ''}`} onClick={() => setTab('gallery')} title="Handpicked cover collection">
+                        <ImageIcon size={14} />
                         Gallery
                     </button>
-                    <button className={tab === 'upload' ? 'active' : ''} onClick={() => setTab('upload')}>
+                    <button className={`rn-picker-tab ${tab === 'upload' ? 'active' : ''}`} onClick={() => setTab('upload')} title="Upload image from your computer">
+                        <Upload size={14} />
                         Upload
                     </button>
-                    <button className={tab === 'link' ? 'active' : ''} onClick={() => setTab('link')}>
+                    <button className={`rn-picker-tab ${tab === 'link' ? 'active' : ''}`} onClick={() => setTab('link')} title="Paste a direct image link">
+                        <LinkIcon size={14} />
                         Link
                     </button>
+                    {currentData && (
+                        <button className={`rn-picker-tab ${tab === 'settings' ? 'active' : ''}`} onClick={() => setTab('settings')} title="Customize cover appearance">
+                            <Sliders size={14} />
+                            Settings
+                        </button>
+                    )}
                 </div>
-                <button className="rn-background-picker-remove" onClick={() => onSelect(null)}>
+                <button className="rn-background-picker-remove" onClick={() => onSelect(null)} title="Remove cover from document">
                     Remove
                 </button>
             </div>
@@ -343,6 +463,222 @@ export const BackgroundPicker: React.FC<BackgroundPickerProps> = ({ onSelect, on
                             <button type="submit">Submit</button>
                         </form>
                         <p>Works with any image from the web.</p>
+                    </div>
+                )}
+
+                {tab === 'settings' && currentData && (
+                    <div className="rn-background-picker-scrollable compact-settings">
+                        {/* Layout Category */}
+                        <div className="rn-settings-group">
+                            <div className="rn-settings-group-title">
+                                <Layout size={10} />
+                                Layout Control
+                            </div>
+
+                            <div className="rn-settings-grid">
+                                <DebouncedSlider
+                                    label="Height"
+                                    icon={<MoveVertical size={11} />}
+                                    value={currentData.height || globalHeight}
+                                    min={100} max={600} step={10} unit="px"
+                                    defaultValue={globalHeight}
+                                    onCommit={(v) => onUpdateSettings({ height: v })}
+                                />
+                                <DebouncedSlider
+                                    label="Scale"
+                                    icon={<Expand size={11} />}
+                                    value={currentData.scale || 1}
+                                    min={0.5} max={3} step={0.05}
+                                    defaultValue={1}
+                                    formatValue={(v) => `${v.toFixed(2)}x`}
+                                    onCommit={(v) => onUpdateSettings({ scale: v })}
+                                />
+                                <DebouncedSlider
+                                    label="X-Axis"
+                                    icon={<MoveHorizontal size={11} />}
+                                    value={currentData.xPosition ?? 50}
+                                    min={0} max={100} step={1} unit="%"
+                                    defaultValue={50}
+                                    onCommit={(v) => onUpdateSettings({ xPosition: v })}
+                                />
+
+                                <div className="rn-settings-section">
+                                    <div className="rn-settings-label-wrapper" style={{ marginBottom: '4px' }}>
+                                        <div className="rn-settings-label">
+                                            <Repeat size={11} />
+                                            Repeat
+                                        </div>
+                                        {currentData.repeat !== undefined && (
+                                            <button
+                                                className="rn-btn-reset-small"
+                                                onClick={() => onUpdateSettings({ repeat: undefined })}
+                                                title="Reset to default"
+                                            >
+                                                <RotateCcw size={10} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="rn-toggle-wrapper">
+                                        <label className="rn-toggle">
+                                            <input
+                                                type="checkbox"
+                                                checked={!!currentData.repeat}
+                                                onChange={(e) => {
+                                                    const newVal = e.target.checked;
+                                                    onUpdateSettings({ repeat: newVal === false ? undefined : true });
+                                                }}
+                                            />
+                                            <span className="rn-toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="rn-settings-section size-mode-section">
+                                <div className="rn-settings-label-wrapper" style={{ marginBottom: '6px' }}>
+                                    <div className="rn-settings-label">Fitting Mode</div>
+                                    {currentData.size !== undefined && (
+                                        <button
+                                            className="rn-btn-reset-small"
+                                            onClick={() => onUpdateSettings({ size: undefined })}
+                                            title="Reset to default"
+                                        >
+                                            <RotateCcw size={10} />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="rn-select-group rn-select-group-5">
+                                    {SIZE_MODES.map((s) => (
+                                        <button
+                                            key={s.value}
+                                            className={`rn-select-btn ${(currentData.size || 'cover') === s.value ? 'active' : ''}`}
+                                            onClick={() => {
+                                                const newVal = s.value;
+                                                onUpdateSettings({ size: newVal === 'cover' ? undefined : newVal });
+                                            }}
+                                            title={s.label}
+                                        >
+                                            {s.icon}
+                                            <span>{s.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Filters Category */}
+                        <div className="rn-settings-group">
+                            <div className="rn-settings-group-title">
+                                <Palette size={10} />
+                                Visual Filters
+                            </div>
+
+                            <div className="rn-settings-grid">
+                                <DebouncedSlider
+                                    label="Opacity"
+                                    icon={<Eye size={11} />}
+                                    value={currentData.opacity ?? 1}
+                                    min={0} max={1} step={0.05}
+                                    defaultValue={1}
+                                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                                    onCommit={(v) => onUpdateSettings({ opacity: v })}
+                                />
+
+                                <DebouncedSlider
+                                    label="Blur"
+                                    icon={<Droplets size={11} />}
+                                    value={currentData.blur || 0}
+                                    min={0} max={20} step={1} unit="px"
+                                    defaultValue={0}
+                                    onCommit={(v) => onUpdateSettings({ blur: v })}
+                                />
+
+                                <DebouncedSlider
+                                    label="Brightness"
+                                    icon={<Sun size={11} />}
+                                    value={currentData.brightness ?? 1}
+                                    min={0} max={2} step={0.05}
+                                    defaultValue={1}
+                                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                                    onCommit={(v) => onUpdateSettings({ brightness: v })}
+                                />
+
+                                <DebouncedSlider
+                                    label="Contrast"
+                                    icon={<Contrast size={11} />}
+                                    value={currentData.contrast ?? 1}
+                                    min={0} max={2} step={0.05}
+                                    defaultValue={1}
+                                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                                    onCommit={(v) => onUpdateSettings({ contrast: v })}
+                                />
+
+                                <DebouncedSlider
+                                    label="Saturate"
+                                    icon={<Sparkles size={11} />}
+                                    value={currentData.saturate ?? 1}
+                                    min={0} max={3} step={0.05}
+                                    defaultValue={1}
+                                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                                    onCommit={(v) => onUpdateSettings({ saturate: v })}
+                                />
+
+                                <DebouncedSlider
+                                    label="Hue Rotate"
+                                    icon={<RotateCcw size={11} />}
+                                    value={currentData.hueRotate || 0}
+                                    min={0} max={360} step={1} unit="°"
+                                    defaultValue={0}
+                                    onCommit={(v) => onUpdateSettings({ hueRotate: v })}
+                                />
+
+                                <DebouncedSlider
+                                    label="Grayscale"
+                                    icon={<Sliders size={11} />}
+                                    value={currentData.grayscale || 0}
+                                    min={0} max={1} step={0.05}
+                                    defaultValue={0}
+                                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                                    onCommit={(v) => onUpdateSettings({ grayscale: v })}
+                                />
+
+                                <DebouncedSlider
+                                    label="Sepia"
+                                    icon={<Scissors size={11} />}
+                                    value={currentData.sepia || 0}
+                                    min={0} max={1} step={0.05}
+                                    defaultValue={0}
+                                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                                    onCommit={(v) => onUpdateSettings({ sepia: v })}
+                                />
+
+                                <DebouncedSlider
+                                    label="Invert"
+                                    icon={<Moon size={11} />}
+                                    value={currentData.invert || 0}
+                                    min={0} max={1} step={0.05}
+                                    defaultValue={0}
+                                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                                    onCommit={(v) => onUpdateSettings({ invert: v })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Simplified Footer */}
+                        <div className="rn-settings-footer compact-footer">
+                            <button
+                                className={`rn-btn rn-btn-debug ${debugFeedback ? 'active' : ''}`}
+                                onClick={handleLogDebug}
+                                title="Log current state to console"
+                            >
+                                <Info size={12} />
+                                {debugFeedback ? 'Logged!' : 'Debug'}
+                            </button>
+                            <button className="rn-btn text-danger" onClick={onResetSettings}>
+                                <RotateCcw size={12} />
+                                Reset
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
